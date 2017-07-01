@@ -24,7 +24,7 @@ $ nix-env -i nixops
 
 # Launching
 `kube-master-and-node.nix` contains a nixos configuration module for a virtualbox VM
-with a single master/node. The steps to launch it are as follows:
+with a single master/node kubernetes. The steps to launch it are as follows:
 
 
 ```
