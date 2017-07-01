@@ -42,7 +42,7 @@ $ nixops list
 +--------------------------------------+------+------------------------+------------+------+
 ```
 
-Now, to actually _create_ the machine from this deployment we use `nixops deploy`.
+To actually _create_ the machine from this deployment we use `nixops deploy`.
 
 ```
 $ nixops deploy -d kube
@@ -81,9 +81,10 @@ To check kube's status:
 NAME      STATUS    AGE
 kube      Ready     2m
 ```
-Nice! Now for a quick test.
+Nice!
 
-`l`
+# A Quick Test
+```
 # kubectl run my-nginx --image=nginx --replicas=2 --port=80
 deployment "my-nginx" created
 
