@@ -9,24 +9,35 @@
     {
       deployment.targetEnv = "virtualbox";
       deployment.virtualbox.headless = true;
+      deployment.virtualbox.vcpu = 4;
       boot.kernel.sysctl."net.ipv6.conf.all.disable_ipv6" = true;
-      environment.systemPackages = [
-        pkgs.curl
-        pkgs.git
-        pkgs.vim
-        pkgs.nmap
-        pkgs.telnet
-        pkgs.openssl
+      environment.systemPackages = with pkgs; [
+        curl
+        git
+        vim
+        nmap
+        telnet
+        openssl
+        bind
       ];
       services.kubernetes = {
         roles = ["master" "node"];
+        dns.enable = true;
+
         kubelet = {
+          clusterDomain = "nube.com";
+          enable = true;
           tlsKeyFile = apiserverKey;
           tlsCertFile = apiserverCert;
         };
+        kubeconfig = {
+          server = "https://kube.nube.com:443";
+          caFile = caPem;
+          certFile = apiserverCert;
+          keyFile = apiserverKey;
+        };
         apiserver = {
-          publicAddress = "0.0.0.0";
-          advertiseAddress = "192.168.1.8";
+          enable = true;
           tlsKeyFile = apiserverKey;
           tlsCertFile = apiserverCert;
           clientCaFile = caPem;
@@ -40,8 +51,18 @@
         controllerManager.serviceAccountKeyFile = apiserverKey;
       };
 
-      networking.firewall.allowedTCPPorts = [ 80 443 ];
+      networking.firewall.allowedUDPPorts = [ 53 ];
+      networking.firewall.allowedTCPPorts = [ 80 443 8080 ];
       networking.firewall.allowedTCPPortRanges = [{ from = 30000; to = 32767; }];
-      networking.nameservers = ["8.8.8.8"];
+      networking.interfaces.enp0s8.ip4 = [ { address = "192.168.56.101"; prefixLength = 24; } ];
+      networking.nameservers = ["192.168.56.101" "127.0.0.1" "8.8.8.8"];
+      environment.etc."resolv.conf".text = ''
+        nameserver 8.8.8.8
+        options edns0
+      '';
+      networking.hostName = "kube.nube.com";
+      networking.extraHosts = ''
+        192.168.56.101 kube.nube.com
+      '';
     };
 }
