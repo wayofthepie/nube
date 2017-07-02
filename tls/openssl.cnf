@@ -7,5 +7,5 @@ basicConstraints = CA:FALSE
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 subjectAltName = @alt_names
 [alt_names]
-DNS.1 = kube.nube.com
+DNS.1 = kubernetes
 IP.1 = 10.10.10.1

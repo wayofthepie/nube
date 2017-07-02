@@ -10,6 +10,7 @@
       deployment.targetEnv = "virtualbox";
       deployment.virtualbox.headless = true;
       deployment.virtualbox.vcpu = 4;
+      boot.kernel.sysctl."net.ipv4.conf.all.forwarding" = true;
       boot.kernel.sysctl."net.ipv6.conf.all.disable_ipv6" = true;
       environment.systemPackages = with pkgs; [
         curl
@@ -31,7 +32,6 @@
           tlsCertFile = apiserverCert;
         };
         kubeconfig = {
-          server = "https://kube.nube.com:443";
           caFile = caPem;
           certFile = apiserverCert;
           keyFile = apiserverKey;
@@ -50,19 +50,18 @@
         controllerManager.rootCaFile = caPem;
         controllerManager.serviceAccountKeyFile = apiserverKey;
       };
+      virtualisation.docker.extraOptions = "--iptables=false --ip-masq=false";
 
       networking.firewall.allowedUDPPorts = [ 53 ];
       networking.firewall.allowedTCPPorts = [ 80 443 8080 ];
       networking.firewall.allowedTCPPortRanges = [{ from = 30000; to = 32767; }];
       networking.interfaces.enp0s8.ip4 = [ { address = "192.168.56.101"; prefixLength = 24; } ];
-      networking.nameservers = ["192.168.56.101" "127.0.0.1" "8.8.8.8"];
+      networking.hostName = "kubernetes";
       environment.etc."resolv.conf".text = ''
         nameserver 8.8.8.8
-        options edns0
       '';
-      networking.hostName = "kube.nube.com";
       networking.extraHosts = ''
-        192.168.56.101 kube.nube.com
+        192.168.56.101 kubernetes
       '';
     };
 }
