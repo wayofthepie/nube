@@ -30,7 +30,8 @@ let
     keyUsage = nonRepudiation, digitalSignature, keyEncipherment
     subjectAltName = @alt_names
     [alt_names]
-    IP.1 = $ENV::WORKER_FQDN
+    DNS.1 = kubeWorker1
+    DNS.2 = kubeWorker2
   '';
   apiserverOpenSslConf = pkgs.writeText "apiserver_openssl.cnf" ''
     [req]
@@ -136,8 +137,8 @@ in rec {
       -out $out -subj "/CN=kube-worker" \
       -config ${workerOpenSslConf}
   '';
-  workerCertGen = ipAddr: runWithOpenSSL "worker.pem" ''
-    WORKER_IP=${ipAddr} openssl x509 \
+  workerCert = runWithOpenSSL "worker.pem" ''
+    openssl x509 \
       -req -in ${workerCsr} \
       -CA ${caPem} -CAkey ${caKey} -CAcreateserial \
       -out $out -days 365 -extensions v3_req \
