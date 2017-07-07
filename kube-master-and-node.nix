@@ -10,7 +10,7 @@ let
 
     services.flannel = {
       enable = true;
-      network = "10.10.0.0/16";
+      network = "10.30.0.0/16";
       iface = "enp0s8";
       etcd = {
         endpoints = ["https://etcd1:2379" "https://etcd2:2379" "https://etcd3:2379"];
@@ -26,22 +26,48 @@ let
     systemd.services.docker.after = ["flannel.service"];
     systemd.services.docker.serviceConfig.EnvironmentFile = "/run/flannel/subnet.env";
     virtualisation.docker.extraOptions = "--iptables=false --ip-masq=false --bip $FLANNEL_SUBNET";
-
-    services.kubernetes.verbose = true;
-    services.kubernetes.etcd = {
-      servers = ["https://etcd1:2379" "https://etcd2:2379" "https://etcd3:2379"];
-      keyFile = etcdClientKey;
-      certFile = etcdClientCert;
-      caFile = caPem;
+    services.kubernetes = {
+      proxy  = {
+        enable = true;
+        extraOpts = ''
+          --masquerade-all
+        '';
+      };
+      kubelet = {
+        clusterDns = "192.168.56.101";
+        tlsKeyFile = workerKey;
+        tlsCertFile = workerCert;
+      };
+      verbose = true;
+      etcd = {
+        servers = ["https://etcd1:2379" "https://etcd2:2379" "https://etcd3:2379"];
+        keyFile = etcdClientKey;
+        certFile = etcdClientCert;
+        caFile = caPem;
+      };
+      kubeconfig = {
+        server = "https://192.168.56.101:443";
+        caFile = caPem;
+        certFile = adminCert;
+        keyFile = adminKey;
+      };
     };
-
-    environment.systemPackages = [ pkgs.bind pkgs.tcpdump pkgs.utillinux ];
+    environment.systemPackages = with pkgs; [
+      bind
+      bridge-utils
+      nmap
+      tcpdump
+      telnet
+      utillinux
+    ];
   };
 
   kubeMasterConfig = {pkgs, ...}: with assets; {
     require = [kubeCommonConfig];
-    # kube apiserver
-    networking.firewall.allowedTCPPorts = [ 22 443 ];
+    networking.interfaces.enp0s8.ip4 = [ { address = "192.168.56.101"; prefixLength = 24; } ];
+    networking.firewall.allowedTCPPorts = [ 22 53 443 ];
+    networking.firewall.allowedTCPPortRanges = [{ from = 30000; to = 32767; }];
+    networking.firewall.allowedUDPPorts = [ 53 ];
     networking.dhcpcd.extraConfig = ''
       hostname ""
     '';
@@ -54,25 +80,23 @@ let
       #scheduler.leaderElect = true;
       #controllerManager.leaderElect = true;
       dns.enable = true;
-      kubelet.enable = false;
       apiserver = {
         publicAddress = "0.0.0.0";
+        advertiseAddress = "192.168.56.101";
         enable = true;
         tlsKeyFile = apiserverKey;
         tlsCertFile = apiserverCert;
         clientCaFile = caPem;
-        serviceAccountKeyFile = apiserverKey;
-        kubeletClientCaFile = caPem;
-        kubeletClientKeyFile = workerKey;
-        kubeletClientCertFile = workerCert;
+        serviceAccountKeyFile = caKey;
       };
       controllerManager.enable = true;
-      controllerManager.rootCaFile = assets.caPem;
-      controllerManager.serviceAccountKeyFile = assets.apiserverKey;
+      controllerManager.rootCaFile = caPem;
+      controllerManager.serviceAccountKeyFile = caKey;
     };
   };
   kubeWorkerConfig = with assets; {
     require = [kubeCommonConfig];
+    boot.kernel.sysctl."net.ipv4.conf.all.forwarding" = true;
     networking.firewall.allowedTCPPorts = [ 10250 ];
     environment.etc."resolv.conf".text = ''
       nameserver 8.8.8.8
@@ -80,16 +104,6 @@ let
 
     services.kubernetes = {
       roles = ["node"];
-      kubeconfig = {
-        server = "https://kubernetes:443";
-        caFile = caPem;
-        certFile = workerCert;
-        keyFile = workerKey;
-      };
-      kubelet = {
-        tlsKeyFile = workerKey;
-        tlsCertFile = workerCert;
-      };
     };
   };
   etcdNodeConfig = with assets; {

@@ -4,10 +4,10 @@ let
     buildInputs = [ pkgs.openssl ];
   } cmd;
 
-  masterIp = "10.10.10.1";
+  masterIp = "192.168.56.101";
 
   # Openssl configurations
-  masterOpenSslConf = pkgs.writeText "maser_openssl.cnf"  ''
+  masterOpenSslConf = pkgs.writeText "master_openssl.cnf"  ''
     [req]
     req_extensions = v3_req
     distinguished_name = req_distinguished_name
@@ -19,6 +19,7 @@ let
     [alt_names]
     DNS.1 = kubernetes
     IP.1 = ${masterIp}
+    IP.2 = 10.10.10.1
   '';
   workerOpenSslConf = pkgs.writeText "worker_openssl.cnf" ''
     [req]
@@ -79,6 +80,8 @@ in rec {
   # Pre-created assets
   caPem = ./tls/ca/ca.pem;
   caKey = ./tls/ca/ca-key.pem;
+  adminCert = ./tls/admin/admin.pem;
+  adminKey = ./tls/admin/admin-key.pem;
 
   # Etcd assets
   etcdKey = runWithOpenSSL "etcd-key.pem" "openssl genrsa -out $out 2048";
